@@ -1,9 +1,7 @@
+import 'package:cafetrack/inventory_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'inventory_list_page.dart';
-
-enum AuthMode { Signup, Login }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,23 +12,27 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  AuthMode _authMode = AuthMode.Login;
-  bool _isLoading = false;
+  var _isLogin = true;
+  var _isLoading = false;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController(); // For the user's full name
+  final _nameController = TextEditingController();
+  final _intakeController = TextEditingController();
+  final _studentIdController = TextEditingController();
 
-  void _switchAuthMode() {
-    setState(() {
-      _authMode =
-      _authMode == AuthMode.Login ? AuthMode.Signup : AuthMode.Login;
-    });
-  }
+  // NEW: State variable for the selected department
+  String? _selectedDepartment;
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return; // Invalid!
+  // NEW: List of departments for the dropdown
+  final List<String> _departments = [
+    'CSE', 'BBA', 'EEE', 'Textile', 'CE', 'English', 'Economics', 'LL.B'
+  ];
+
+  void _submit() async {
+    final isValid = _formKey.currentState!.validate();
+    if (!isValid) {
+      return;
     }
     _formKey.currentState!.save();
     setState(() {
@@ -38,10 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      UserCredential userCredential;
       final auth = FirebaseAuth.instance;
+      UserCredential userCredential;
 
-      if (_authMode == AuthMode.Login) {
+      if (_isLogin) {
         userCredential = await auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
@@ -52,24 +54,24 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        // After creating the user, store their info in Firestore.
-        // This is where we add the default role.
-        final firestore = FirebaseFirestore.instance;
-        await firestore.collection('users').doc(userCredential.user!.uid).set({
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
-          // NEW: Automatically assign the 'user' role on signup.
+          'department': _selectedDepartment, // Save the selected department
+          'intake': _intakeController.text.trim(),
+          'studentId': _studentIdController.text.trim(),
           'role': 'user',
         });
       }
 
-      // Navigate to the inventory screen after successful login/signup
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (ctx) => const InventoryListPage()),
         );
       }
-
     } on FirebaseAuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,81 +95,138 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
+    _intakeController.dispose();
+    _studentIdController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    _authMode == AuthMode.Login ? 'Welcome Back!' : 'Create Account',
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 32),
-                  if (_authMode == AuthMode.Signup)
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Full Name'),
-                      keyboardType: TextInputType.name,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your name.';
-                        }
-                        return null;
-                      },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Card(
+                margin: const EdgeInsets.all(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!_isLogin)
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(labelText: 'Full Name'),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter a name.';
+                              }
+                              return null;
+                            },
+                          ),
+                        if (!_isLogin) const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: const InputDecoration(labelText: 'Email Address'),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || !value.contains('@')) {
+                              return 'Please enter a valid email.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(labelText: 'Password'),
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.length < 6) {
+                              return 'Password must be at least 6 characters.';
+                            }
+                            return null;
+                          },
+                        ),
+                        if (!_isLogin) const SizedBox(height: 12),
+                        // UPDATED: Changed from TextFormField to DropdownButtonFormField
+                        if (!_isLogin)
+                          DropdownButtonFormField<String>(
+                            value: _selectedDepartment,
+                            hint: const Text('Select Department'),
+                            items: _departments.map((String department) {
+                              return DropdownMenuItem<String>(
+                                value: department,
+                                child: Text(department),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedDepartment = newValue;
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null) {
+                                return 'Please select a department.';
+                              }
+                              return null;
+                            },
+                          ),
+                        if (!_isLogin) const SizedBox(height: 12),
+                        if (!_isLogin)
+                          TextFormField(
+                            controller: _intakeController,
+                            decoration: const InputDecoration(labelText: 'Intake (e.g., 49)'),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter an intake.';
+                              }
+                              return null;
+                            },
+                          ),
+                        if (!_isLogin) const SizedBox(height: 12),
+                        if (!_isLogin)
+                          TextFormField(
+                            controller: _studentIdController,
+                            decoration: const InputDecoration(labelText: 'Student ID'),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter a student ID.';
+                              }
+                              return null;
+                            },
+                          ),
+                        const SizedBox(height: 20),
+                        if (_isLoading)
+                          const CircularProgressIndicator()
+                        else
+                          ElevatedButton(
+                            onPressed: _submit,
+                            child: Text(_isLogin ? 'Login' : 'Signup'),
+                          ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _isLogin = !_isLogin;
+                            });
+                          },
+                          child: Text(_isLogin
+                              ? 'Create an account'
+                              : 'I already have an account'),
+                        ),
+                      ],
                     ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'E-Mail'),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || !value.contains('@')) {
-                        return 'Invalid email!';
-                      }
-                      return null;
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Password'),
-                    obscureText: true,
-                    validator: (value) {
-                      if (value == null || value.length < 6) {
-                        return 'Password is too short!';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  if (_isLoading)
-                    const CircularProgressIndicator()
-                  else
-                    ElevatedButton(
-                      onPressed: _submit,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
-                      ),
-                      child: Text(_authMode == AuthMode.Login ? 'LOGIN' : 'SIGN UP'),
-                    ),
-                  TextButton(
-                    onPressed: _switchAuthMode,
-                    child: Text(
-                        '${_authMode == AuthMode.Login ? 'SIGNUP' : 'LOGIN'} INSTEAD'),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

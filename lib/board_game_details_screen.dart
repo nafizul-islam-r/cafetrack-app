@@ -1,7 +1,8 @@
 import 'package:cafetrack/add_board_game_screen.dart';
+import 'package:cafetrack/select_user_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Package for formatting dates
+import 'package:intl/intl.dart';
 
 class BoardGameDetailsScreen extends StatelessWidget {
   final DocumentSnapshot gameDoc;
@@ -15,7 +16,10 @@ class BoardGameDetailsScreen extends StatelessWidget {
         title: const Text('Are you sure?'),
         content: const Text('Do you want to permanently delete this game?'),
         actions: <Widget>[
-          TextButton(child: const Text('No'), onPressed: () => Navigator.of(ctx).pop()),
+          TextButton(
+            child: const Text('No'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
           TextButton(
             child: const Text('Yes'),
             onPressed: () {
@@ -29,45 +33,9 @@ class BoardGameDetailsScreen extends StatelessWidget {
     );
   }
 
-  void _showAssignDialog(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final userIdController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Assign Game'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: userIdController,
-            decoration: const InputDecoration(labelText: 'Student ID or Faculty Code'),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter an ID.';
-              }
-              return null;
-            },
-          ),
-        ),
-        actions: [
-          TextButton(child: const Text('Cancel'), onPressed: () => Navigator.of(ctx).pop()),
-          ElevatedButton(
-            child: const Text('Assign'),
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                _assignGame(context, userIdController.text.trim());
-                Navigator.of(ctx).pop();
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _assignGame(BuildContext context, String assignedToId) async {
+  Future<void> _assignGame(BuildContext context, DocumentSnapshot userDoc) async {
     final gameRef = gameDoc.reference;
+    final userData = userDoc.data() as Map<String, dynamic>;
 
     FirebaseFirestore.instance.runTransaction((transaction) async {
       final freshSnapshot = await transaction.get(gameRef);
@@ -77,7 +45,11 @@ class BoardGameDetailsScreen extends StatelessWidget {
         transaction.update(gameRef, {'availableUnits': data['availableUnits'] - 1});
         final assignmentRef = gameRef.collection('assignments').doc();
         transaction.set(assignmentRef, {
-          'assignedTo': assignedToId,
+          'userId': userDoc.id,
+          'userName': userData['name'],
+          'userStudentId': userData['studentId'],
+          'userDepartment': userData['department'],
+          'userIntake': userData['intake'],
           'assignedAt': Timestamp.now(),
         });
       } else {
@@ -94,21 +66,14 @@ class BoardGameDetailsScreen extends StatelessWidget {
     });
   }
 
-  // NEW: Logic to handle returning a game.
   Future<void> _returnGame(BuildContext context, DocumentSnapshot assignmentDoc) async {
     final gameRef = gameDoc.reference;
 
     FirebaseFirestore.instance.runTransaction((transaction) async {
-      // 1. Get the most up-to-date version of the game document.
       final freshSnapshot = await transaction.get(gameRef);
       final data = freshSnapshot.data() as Map<String, dynamic>;
-
-      // 2. Perform the updates.
-      // a) Increase the available units count.
       transaction.update(gameRef, {'availableUnits': data['availableUnits'] + 1});
-      // b) Delete the assignment record.
       transaction.delete(assignmentDoc.reference);
-
     }).then((_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game returned successfully!'), backgroundColor: Colors.green),
@@ -177,7 +142,15 @@ class BoardGameDetailsScreen extends StatelessWidget {
                       Text('$availableUnits of $totalUnits units available', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: availableUnits > 0 ? () => _showAssignDialog(context) : null, // Disable button if no games are available
+                        onPressed: availableUnits > 0 ? () async {
+                          final selectedUser = await Navigator.of(context).push<DocumentSnapshot>(
+                            MaterialPageRoute(builder: (ctx) => const SelectUserScreen()),
+                          );
+
+                          if (selectedUser != null) {
+                            _assignGame(context, selectedUser);
+                          }
+                        } : null,
                         icon: const Icon(Icons.person_add),
                         label: const Text('Assign Game to User'),
                         style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
@@ -185,8 +158,6 @@ class BoardGameDetailsScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                       Text('Current Assignments', style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 8),
-
-                      // NEW: StreamBuilder to display the list of assignments.
                       StreamBuilder<QuerySnapshot>(
                         stream: gameDoc.reference.collection('assignments').orderBy('assignedAt', descending: true).snapshots(),
                         builder: (ctx, assignmentSnapshot) {
@@ -200,20 +171,32 @@ class BoardGameDetailsScreen extends StatelessWidget {
                           final assignments = assignmentSnapshot.data!.docs;
 
                           return ListView.builder(
-                            shrinkWrap: true, // Important for nested lists
-                            physics: const NeverScrollableScrollPhysics(), // Disables scrolling for the inner list
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: assignments.length,
                             itemBuilder: (ctx, index) {
                               final assignmentData = assignments[index].data() as Map<String, dynamic>;
-                              final assignedTo = assignmentData['assignedTo'] ?? 'Unknown';
+                              final userName = assignmentData['userName'] ?? 'Unknown User';
+                              final userStudentId = assignmentData['userStudentId'] ?? 'No ID';
+                              final userDepartment = assignmentData['userDepartment'] ?? 'N/A';
+                              final userIntake = assignmentData['userIntake'] ?? '';
                               final assignedAt = (assignmentData['assignedAt'] as Timestamp?)?.toDate();
                               final formattedDate = assignedAt != null ? DateFormat.yMMMd().add_jm().format(assignedAt) : 'No date';
 
                               return Card(
                                 margin: const EdgeInsets.symmetric(vertical: 4),
                                 child: ListTile(
-                                  title: Text(assignedTo),
-                                  subtitle: Text('Assigned on: $formattedDate'),
+                                  title: Text(userName),
+                                  // CORRECTED: The subtitle is now a proper Column widget.
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('ID: $userStudentId'),
+                                      Text('Dept: $userDepartment-$userIntake'),
+                                      Text('On: $formattedDate'),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
                                   trailing: ElevatedButton(
                                     child: const Text('Return'),
                                     onPressed: () => _returnGame(context, assignments[index]),
@@ -235,3 +218,4 @@ class BoardGameDetailsScreen extends StatelessWidget {
     );
   }
 }
+

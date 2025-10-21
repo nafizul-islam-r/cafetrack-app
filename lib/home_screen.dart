@@ -2,6 +2,7 @@ import 'package:cafetrack/add_board_game_screen.dart';
 import 'package:cafetrack/add_food_item_screen.dart';
 import 'package:cafetrack/board_games_screen.dart';
 import 'package:cafetrack/inventory_list_page.dart';
+import 'package:cafetrack/profile_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<Widget> _pages = <Widget>[
     InventoryListPage(),
     BoardGamesScreen(),
+    ProfileScreen(),
   ];
+
+  static const List<String> _pageTitles = [
+    'Food Inventory',
+    'Board Games',
+    'My Profile',
+  ];
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -46,13 +55,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // This function decides which FloatingActionButton to show
   Widget? _buildFab() {
     if (_userRole != 'admin') {
-      return null; // No button for non-admins
+      return null;
     }
 
-    // Show FAB for the Food Page
     if (_selectedIndex == 0) {
       return FloatingActionButton(
         onPressed: () {
@@ -64,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.add),
       );
     }
-    // Show FAB for the Board Games Page
     else if (_selectedIndex == 1) {
       return FloatingActionButton(
         onPressed: () {
@@ -84,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedIndex == 0 ? 'Food Inventory' : 'Board Games'),
+        title: Text(_pageTitles[_selectedIndex]),
         actions: [
           IconButton(
             onPressed: () {
@@ -111,6 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.games),
             label: 'Board Games',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -119,4 +129,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
