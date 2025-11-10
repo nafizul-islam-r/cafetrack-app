@@ -1,0 +1,49 @@
+name: cafetrack_flutter
+description: "A cafeteria inventory management system."
+
+# Prevent accidental publishing
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+# These are all the packages your team will need
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase Packages
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.4
+
+  # UI Packages
+  flutter_rating_bar: ^4.0.1
+  intl: ^0.19.0
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # This is the package for generating your app icon
+  flutter_launcher_icons: ^0.13.1
+
+  flutter_lints: ^3.0.0
+
+# This block tells the icon package where to find your icon
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+
+# This block tells Flutter what assets to include
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/ # <-- Declares your logo.png
+    - assets/icon/   # <-- Declares your icon.png
