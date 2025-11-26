@@ -1,5 +1,344 @@
-☕ CafeTrack Mobile: Real-Time Cafeteria Management AppCafeTrack Mobile is a comprehensive, cross-platform (iOS/Android) mobile application built with Flutter that digitizes cafeteria inventory, asset tracking (board games), and service quality feedback for university facilities. The app is powered by a robust, modern serverless architecture using Google Firebase for real-time data synchronization, scalable storage, and secure authentication.✨ FeaturesCafeTrack Mobile provides two distinct experiences within a unified mobile interface: the Public Portal for students/faculty and the Administrative Panel for staff.🧑‍🎓 Public/User PortalReal-Time Inventory Viewing: Students can browse the live food menu and check the current stock status of all available items.Asset Availability: Check the total and available units of shared Board Games before attempting to borrow.User Reviews: Submit star ratings and detailed comments for cafeteria food items to provide actionable service quality feedback.Profile Management: Secure registration, login, and profile updates managed via Firebase Authentication.👩‍💼 Administrative Panel (Staff Access)Full CRUD Control: Staff have complete Create, Read, Update, Delete (CRUD) mastery over food inventory and board game assets directly within the mobile app.Digital Assignment System: Log the checkout and return of board games to specific users (via Student ID lookup), which automatically updates inventory counts.Data Oversight: Access user reviews and overall asset status to manage operations efficiently.🛠️ User Setup Guide (Development Installation)This guide is for developers who want to clone and run the project locally. It assumes you have Flutter, Dart, and Git installed on your machine.1. Clone the Repositorygit clone [YOUR_GITHUB_REPO_URL]
-cd cafetrack_flutter
-2. Get DependenciesNavigate to the project root and fetch all necessary packages:flutter pub get
-3. Firebase Setup (Crucial Step)The app relies entirely on the Google Firebase Platform. You must link the project to your own Firebase instance.A. Create Firebase ProjectGo to the Firebase Console.Create a New Project (e.g., cafetrack-dev).Enable Authentication (Email/Password sign-in method) and Firestore Database (Start in production mode is recommended).B. Configure Apps and Download Config FilesYou must add both platforms to your new Firebase project and download the platform-specific configuration files:For Android: Download the google-services.json file and place it in the android/app/ directory.For iOS: Download the GoogleService-Info.plist file and place it in the ios/Runner/ directory.C. IMPORTANT: Add firebase_options.dartThis file contains the configuration keys needed for your Flutter code to initialize Firebase. You must run the flutterfire configure command and copy the resulting lib/firebase_options.dart file into your project's lib/ folder.4. Configure Security Rules and Admin UserBefore running, you must ensure the system has permission to read and write data.Firebase Security Rules: Deploy the necessary Firebase Security Rules to enforce role-based access (admin vs. user) to your Firestore database.Admin Access: Manually create the first Admin User in your Firebase Authentication console. Then, manually create a corresponding document in the /users collection in Firestore using that user's UID as the document ID, and set the field role to 'admin'.5. Run the ApplicationWith all configurations complete, run the app on a connected device or emulator:flutter run
-📐 Project ArchitectureThis project follows a Serverless Architecture pattern.ComponentTechnologyDescriptionFrontend (UI/Logic)Flutter / DartNatively compiled, cross-platform mobile application.Backend & DatabaseGoogle FirebaseHandles all server-side logic, API calls, and data storage.Data StorageCloud FirestoreReal-time NoSQL Document Database for all application state.AuthenticationFirebase AuthenticationManages all user registration and secure login sessions.Logic ValidationFirebase Security RulesBusiness logic (e.g., ensuring only admins can delete) is enforced at the database level.🖼️ App ScreenshotsLogin/Signup ScreenFood Inventory GridGame Assignment Panel![Login Screen Placeholder]![Inventory Grid Placeholder]![Assignment Panel Placeholder]Replace this text with an image of the Login/Signup UI.Replace this text with an image of the main Food Items view.Replace this text with an image of the Assignment details screen.🤝 ContributionThis project was developed as a university software development project. Contributions are welcome for future expansion. Please feel free to open issues for bugs or feature requests.📜 LicenseThis project is licensed under the MIT License.
+\# 🍽️ CafeTrack Mobile — Real-Time Cafeteria Management App
+
+
+
+CafeTrack Mobile is a cross-platform \*\*Flutter\*\* application (iOS \& Android) that digitizes cafeteria inventory, manages board-game assets, and collects user feedback — all in real time using \*\*Firebase\*\*.
+
+
+
+---
+
+
+
+\## ✨ Features
+
+
+
+\### 👥 Public / User Portal
+
+\- \*\*Real-Time Inventory Viewing:\*\* Browse live food menu and updated stock.
+
+\- \*\*Asset Availability:\*\* View total and available board-game units.
+
+\- \*\*User Reviews:\*\* Submit star ratings and written comments.
+
+\- \*\*Profile Management:\*\* Registration + login using Firebase Authentication.
+
+
+
+\### 🛠️ Administrative Panel (Staff Access)
+
+\- \*\*Full CRUD Control:\*\* Manage food inventory \& board-game assets.
+
+\- \*\*Digital Assignment System:\*\* Log checkout/return via Student ID.
+
+\- \*\*Data Oversight:\*\* View user feedback \& item statuses.
+
+
+
+---
+
+
+
+\## 🧭 User Setup Guide (Development Installation)
+
+
+
+> Ensure Flutter, Dart, Git, and Firebase CLI are installed.
+
+
+
+\### 1. Clone the Repository
+
+\\`\\`\\`bash
+
+git clone \[YOUR\_GITHUB\_REPO\_URL]
+
+cd cafetrack\_flutter
+
+\\`\\`\\`
+
+
+
+\### 2. Install Dependencies
+
+\\`\\`\\`bash
+
+flutter pub get
+
+\\`\\`\\`
+
+
+
+---
+
+
+
+\# 🔥 3. Firebase Setup (Required)
+
+
+
+\### A. Create Firebase Project
+
+1\. Go to Firebase Console.
+
+2\. Create a new project (e.g., `cafetrack-dev`).
+
+3\. Enable:
+
+&nbsp;  - Authentication (Email/Password)
+
+&nbsp;  - Cloud Firestore
+
+
+
+\### B. Configure Apps \& Download Config Files
+
+
+
+\#### Android
+
+Download `google-services.json` and place it in:
+
+android/app/
+
+
+
+markdown
+
+Copy code
+
+
+
+\#### iOS
+
+Download `GoogleService-Info.plist` and place it in:
+
+ios/Runner/
+
+
+
+r
+
+Copy code
+
+
+
+\### C. Generate firebase\_options.dart
+
+\\`\\`\\`bash
+
+flutterfire configure
+
+\\`\\`\\`
+
+
+
+This will generate:
+
+lib/firebase\_options.dart
+
+
+
+yaml
+
+Copy code
+
+
+
+---
+
+
+
+\# 🛡️ 4. Configure Security Rules \& Admin User
+
+
+
+\### Firestore Security Rules (Example)
+
+\\`\\`\\`js
+
+rules\_version = '2';
+
+service cloud.firestore {
+
+&nbsp; match /databases/{database}/documents {
+
+
+
+&nbsp;   // Users collection
+
+&nbsp;   match /users/{userId} {
+
+&nbsp;     allow read: if request.auth != null;
+
+
+
+&nbsp;     allow create: if request.auth != null \&\&
+
+&nbsp;       request.auth.uid == userId;
+
+
+
+&nbsp;     allow update: if request.auth != null \&\&
+
+&nbsp;       (request.auth.uid == userId ||
+
+&nbsp;        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+
+
+
+&nbsp;     allow delete: if request.auth != null \&\&
+
+&nbsp;       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+&nbsp;   }
+
+
+
+&nbsp;   // Inventory collection
+
+&nbsp;   match /inventory/{itemId} {
+
+&nbsp;     allow read: if true;
+
+
+
+&nbsp;     allow write: if request.auth != null \&\&
+
+&nbsp;       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+&nbsp;   }
+
+&nbsp; }
+
+}
+
+\\`\\`\\`
+
+
+
+\### Create Initial Admin User
+
+1\. Create a user in Firebase Authentication.
+
+2\. Add Firestore document under:
+
+users/{UID}
+
+
+
+yaml
+
+Copy code
+
+
+
+Example:
+
+\\`\\`\\`json
+
+{
+
+&nbsp; "name": "Admin User",
+
+&nbsp; "email": "admin@example.com",
+
+&nbsp; "role": "admin",
+
+&nbsp; "createdAt": "timestamp"
+
+}
+
+\\`\\`\\`
+
+
+
+---
+
+
+
+\# ▶️ 5. Run the Application
+
+\\`\\`\\`bash
+
+flutter run
+
+\\`\\`\\`
+
+
+
+---
+
+
+
+\# 🏗️ Project Architecture
+
+
+
+This project uses a \*\*Serverless Architecture\*\* with Firebase.
+
+
+
+| Component | Technology | Description |
+
+|----------|------------|-------------|
+
+| Frontend | Flutter / Dart | UI \& business logic |
+
+| Backend  | Firebase | Serverless backend |
+
+| Database | Cloud Firestore | Realtime NoSQL DB |
+
+| Auth     | Firebase Auth | Secure login system |
+
+| Logic    | Security Rules | Access control enforcement |
+
+
+
+---
+
+
+
+\# 🖼️ App Screenshots
+
+
+
+> Replace paths with real screenshot files.
+
+
+
+| Login / Signup | Inventory Grid | Assignment Panel |
+
+|----------------|----------------|------------------|
+
+| !\[Login](assets/screenshots/login.png) | !\[Inventory](assets/screenshots/inventory.png) | !\[Assignment](assets/screenshots/assignment.png) |
+
+
+
+---
+
+
+
+\# 🤝 Contribution
+
+
+
+This project was developed as a university software project.  
+
+Contributions and suggestions are welcome.
+
+
+
+---
+
+
+
+\# 📄 License
+
+
+
+This project is licensed under the \*\*MIT License\*\*.  
+
+See the `LICENSE` file for details.
+
