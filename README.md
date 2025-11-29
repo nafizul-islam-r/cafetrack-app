@@ -5,9 +5,9 @@ Includes  real-time Firestore updates, search, details view, quantity control, a
 ---
 <p align="center">
   <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
-  <img src="images/img2.png" width="22%" />
+  <img src="[https://images2.imgbox.com/72/ef/VOiyw7C8_o.png](https://thumbs2.imgbox.com/49/4a/mXsDakBm_t.png" width="350">
   <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
-  <img src="images/img4.png" width="22%" />
+  <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
 </p>
 
 
