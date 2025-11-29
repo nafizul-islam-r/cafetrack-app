@@ -49,7 +49,7 @@ The app uses the following Firestore collections:
 - `board_games`
 
 <p align="center">
-  <img src="https://imgbox.com/VOiyw7C8" width="350">
+  <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
 </p>
 
 
