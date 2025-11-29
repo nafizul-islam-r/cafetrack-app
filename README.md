@@ -48,13 +48,4 @@ The app uses the following Firestore collections:
 - `inventory`
 - `board_games`
 
-Each document generally contains:
-```json
-{
-  "name": "Item name",
-  "price": 120.0,
-  "quantity": 10,
-  "imageUrl": "https://example.com/image.jpg"
-}
-
 
