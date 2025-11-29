@@ -3,6 +3,14 @@ A simple Flutter + Firebase based application to manage food items, inventory st
 Includes  real-time Firestore updates, search, details view, quantity control, and image support.
 
 ---
+<p align="center">
+  <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
+  <img src="images/img2.png" width="22%" />
+  <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
+  <img src="images/img4.png" width="22%" />
+</p>
+
+
 
 ## 🚀 Features
 ### 🥗 Food Item Management
@@ -48,9 +56,7 @@ The app uses the following Firestore collections:
 - `inventory`
 - `board_games`
 
-<p align="center">
-  <img src="https://images2.imgbox.com/72/ef/VOiyw7C8_o.png" width="350">
-</p>
+
 
 
 
