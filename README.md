@@ -1,6 +1,6 @@
-# 📦 Inventory & Board Game Management App
+###  Cafetrack-App
 A simple Flutter + Firebase based application to manage food items, inventory stock, and board games.  
-Includes CRUD operations, real-time Firestore updates, search, details view, quantity control, and image support.
+Includes  real-time Firestore updates, search, details view, quantity control, and image support.
 
 ---
 
@@ -19,7 +19,6 @@ Includes CRUD operations, real-time Firestore updates, search, details view, qua
 - Quantity increase/decrease buttons
 - Individual item details screen
 - Live updates using Firestore streams
-- CRUD operations (`inventory` collection)
 
 ### 🎮 Board Game Management
 - Add/Edit board games
