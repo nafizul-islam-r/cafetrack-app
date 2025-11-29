@@ -4,10 +4,10 @@ Includes  real-time Firestore updates, search, details view, quantity control, a
 
 ---
 <p align="center">
-  <img src="https://images2.imgbox.com/19/87/dnQbgMAe_o.png" width="25%">
-  <img src="https://images2.imgbox.com/f2/de/eQCMWO6q_o.png" width="25%">
-  <img src="https://images2.imgbox.com/55/74/9gObRdF6_o.png" width="25%">
-  <img src="https://images2.imgbox.com/ee/f5/32psT4GM_o.png" width="25%">
+  <img src="https://images2.imgbox.com/19/87/dnQbgMAe_o.png" width="22%">
+  <img src="https://images2.imgbox.com/f2/de/eQCMWO6q_o.png" width="22%">
+  <img src="https://images2.imgbox.com/55/74/9gObRdF6_o.png" width="22%">
+  <img src="https://images2.imgbox.com/ee/f5/32psT4GM_o.png" width="22%">
 </p>
 
 
