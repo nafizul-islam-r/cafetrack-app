@@ -1,4 +1,4 @@
-###  Cafetrack-App
+###   🍽️ Cafetrack-App
 A simple Flutter + Firebase based application to manage food items, inventory stock, and board games.  
 Includes  real-time Firestore updates, search, details view, quantity control, and image support.
 
