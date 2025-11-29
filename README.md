@@ -48,4 +48,9 @@ The app uses the following Firestore collections:
 - `inventory`
 - `board_games`
 
+<p align="center">
+  <img src="https://imgbox.com/VOiyw7C8" width="350">
+</p>
+
+
 
