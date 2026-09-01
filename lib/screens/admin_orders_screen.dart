@@ -13,8 +13,10 @@ class AdminOrdersScreen extends StatefulWidget {
 
 class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   String _filter = 'all'; // all, pending, completed, cancelled
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
+  String _searchOrderQuery = '';
+  String _searchTokenQuery = '';
+  final TextEditingController _searchOrderController = TextEditingController();
+  final TextEditingController _searchTokenController = TextEditingController();
 
   Future<List<Map<String, dynamic>>> _fetchOrders() async {
     final query = <String, dynamic>{};
@@ -31,22 +33,31 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         return dateB.compareTo(dateA); // Descending
       });
 
-    if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      return orders.where((o) {
+    return orders.where((o) {
+      bool matchesOrder = true;
+      bool matchesToken = true;
+
+      if (_searchOrderQuery.isNotEmpty) {
+        final q = _searchOrderQuery.toLowerCase();
+        final orderNum = (o['order_number'] ?? '').toString().toLowerCase();
+        matchesOrder = orderNum.contains(q);
+      }
+
+      if (_searchTokenQuery.isNotEmpty) {
+        final q = _searchTokenQuery.toLowerCase();
         final token = o['token_number']?.toString() ?? '';
         final tStr = token.isNotEmpty ? 't-${token.padLeft(3, '0')}' : '';
-        final orderNum = (o['order_number'] ?? '').toString().toLowerCase();
-        return tStr.contains(q) || orderNum.contains(q) || token == q;
-      }).toList();
-    }
-    
-    return orders;
+        matchesToken = token == q || tStr.contains(q);
+      }
+
+      return matchesOrder && matchesToken;
+    }).toList();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchOrderController.dispose();
+    _searchTokenController.dispose();
     super.dispose();
   }
 
@@ -63,17 +74,38 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by token (e.g. 888, T-888) or order #',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      fillColor: Colors.white,
-                      filled: true,
-                    ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchOrderController,
+                          decoration: InputDecoration(
+                            hintText: 'Search Order #',
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                          onChanged: (val) => setState(() => _searchOrderQuery = val),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchTokenController,
+                          decoration: InputDecoration(
+                            hintText: 'Search Token #',
+                            prefixIcon: const Icon(Icons.confirmation_number),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
+                          onChanged: (val) => setState(() => _searchTokenQuery = val),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 8),
