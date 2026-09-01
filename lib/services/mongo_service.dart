@@ -26,7 +26,15 @@ class MongoService {
     if (userToSave['_id'] != null) {
       userToSave['_id'] = userToSave['_id'].toString();
     }
-    await prefs.setString('currentUser', jsonEncode(userToSave));
+    
+    await prefs.setString(
+      'currentUser', 
+      jsonEncode(userToSave, toEncodable: (item) {
+        if (item is DateTime) return item.toIso8601String();
+        return item.toString();
+      })
+    );
+    
     currentUser = user;
   }
 
