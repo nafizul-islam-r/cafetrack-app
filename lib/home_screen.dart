@@ -58,18 +58,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  static const List<Widget> _pages = <Widget>[
-    InventoryListPage(),
-    BoardGamesScreen(),
-    ProfileScreen(),
+  Widget _getOrdersScreen() {
+    if (_userRole == 'admin') {
+      return const AdminOrdersScreen();
+    }
+    return const MyOrdersScreen();
+  }
+
+  List<Widget> get _pages => [
+    const InventoryListPage(),
+    const BoardGamesScreen(),
+    _getOrdersScreen(),
+    const ProfileScreen(),
   ];
 
-  static const List<String> _pageTitles = [
+  List<String> get _pageTitles => [
     'Food Inventory',
     'Board Games',
+    'Orders',
     'My Profile',
   ];
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -189,9 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('My Orders'),
               onTap: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (ctx) => const MyOrdersScreen()),
-                );
+                setState(() {
+                  _selectedIndex = 2;
+                });
               },
             ),
             if (_userRole == 'admin')
@@ -200,9 +208,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: const Text('Manage Orders'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (ctx) => const AdminOrdersScreen()),
-                  );
+                  setState(() {
+                    _selectedIndex = 2;
+                  });
                 },
               ),
             ListTile(
@@ -223,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: _pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.fastfood),
@@ -231,6 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.games),
             label: 'Board Games',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
+            label: 'Orders',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

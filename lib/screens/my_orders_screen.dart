@@ -41,6 +41,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           }
           
           final orders = snapshot.data ?? [];
+          
+          final pendingTakeaways = orders.where((o) => o['order_status'] == 'pending' && o['order_type'] == 'takeaway').toList();
+
           if (orders.isEmpty) {
             return const Center(
               child: Text(
@@ -50,9 +53,52 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             );
           }
 
-          return ListView.builder(
-            itemCount: orders.length,
-            itemBuilder: (context, index) {
+          return Column(
+            children: [
+              if (pendingTakeaways.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: Colors.amber.shade700, width: 4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.warning, color: Colors.amber.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You have ${pendingTakeaways.length} takeaway order(s) awaiting pickup!',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...pendingTakeaways.map((pto) {
+                        final createdAt = DateTime.tryParse(pto['created_at']) ?? DateTime.now();
+                        final elapsed = DateTime.now().difference(createdAt).inMinutes;
+                        final remaining = (30 - elapsed).clamp(0, 30);
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 32, top: 4),
+                          child: Text(
+                            '${pto['order_number']} - Expires in $remaining minute(s)',
+                            style: TextStyle(color: Colors.amber.shade900),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
               final order = orders[index];
               final orderStatus = order['order_status'] ?? 'pending';
               final createdAt = DateTime.tryParse(order['created_at']);
@@ -103,7 +149,6 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       orderStatus.toString().toUpperCase(),
                       style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
-                  ),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -117,9 +162,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
               );
             },
-          );
-        },
-      ),
+          ),
+        ),
+      ],
+    );
+  },
+),
     );
   }
 }
