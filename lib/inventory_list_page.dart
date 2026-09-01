@@ -143,7 +143,7 @@ class _InventoryListPageState extends State<InventoryListPage> {
                 itemCount: filteredItems.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 3 / 4,
+                  childAspectRatio: 0.65,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
                 ),

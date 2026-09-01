@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class MongoService {
-  static const String _uri = "mongodb+srv://smnafizulislam_db_user:Rao8j7DupRDxxLJi@cafetrack-cluster.06rhpd2.mongodb.net/cafetrackDB";
+  static const String _uri = "mongodb+srv://smnafizulislam_db_user:Rao8j7DupRDxxLJi@cafetrack-cluster.06rhpd2.mongodb.net/cafetrackDB?retryWrites=true&w=majority&safeAtlas=true";
   static late Db _db;
   static Map<String, dynamic>? currentUser;
 
