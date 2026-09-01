@@ -1,8 +1,7 @@
-import 'package:cafetrack/add_board_game_screen.dart';
-import 'package:cafetrack/board_game_details_screen.dart';
+import 'package:cafetrack_flutter/add_board_game_screen.dart';
+import 'package:cafetrack_flutter/board_game_details_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class BoardGamesScreen extends StatefulWidget {
   const BoardGamesScreen({super.key});
@@ -21,33 +20,31 @@ class _BoardGamesScreenState extends State<BoardGamesScreen> {
   }
 
   Future<void> _getUserRole() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = MongoService.currentUser;
     if (user == null) return;
-    final userDoc =
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    if (mounted && userDoc.exists) {
+    if (mounted) {
       setState(() {
-        _userRole = userDoc.data()?['role'] ?? 'user';
+        _userRole = user['role'] ?? 'user';
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('board_games').snapshots(),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: MongoService.collection('board_games').find().toList(),
       builder: (ctx, gamesSnapshot) {
         if (gamesSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!gamesSnapshot.hasData || gamesSnapshot.data!.docs.isEmpty) {
+        if (!gamesSnapshot.hasData || gamesSnapshot.data!.isEmpty) {
           return const Center(child: Text('No board games found.'));
         }
         if (gamesSnapshot.hasError) {
           return const Center(child: Text('Something went wrong...'));
         }
 
-        final loadedGames = gamesSnapshot.data!.docs;
+        final loadedGames = gamesSnapshot.data!;
 
         return GridView.builder(
           padding: const EdgeInsets.all(10.0),
@@ -59,13 +56,12 @@ class _BoardGamesScreenState extends State<BoardGamesScreen> {
             mainAxisSpacing: 10,
           ),
           itemBuilder: (ctx, index) {
-            final gameDoc = loadedGames[index];
-            final gameData = gameDoc.data() as Map<String, dynamic>;
+            final gameData = loadedGames[index];
             final gameName = gameData['name'] ?? 'No Name';
-            final totalUnits = gameData['totalUnits'] ?? 0;
-            final availableUnits = gameData['availableUnits'] ?? 0;
+            final totalUnits = gameData['total_units'] ?? 0;
+            final availableUnits = gameData['available_units'] ?? 0;
             final imageUrl =
-                gameData['imageUrl'] ?? 'https://placehold.co/400x400?text=No+Image';
+                gameData['image_url'] ?? 'https://placehold.co/400x400?text=No+Image';
 
             return Card(
               clipBehavior: Clip.antiAlias,
@@ -77,8 +73,8 @@ class _BoardGamesScreenState extends State<BoardGamesScreen> {
                     ? () {
                   // Navigate to the NEW details screen
                   Navigator.of(context).push(MaterialPageRoute(
-                    builder: (ctx) => BoardGameDetailsScreen(gameDoc: gameDoc),
-                  ));
+                    builder: (ctx) => BoardGameDetailsScreen(gameData: gameData),
+                  )).then((_) => setState(() {}));
                 }
                     : null,
                 child: Column(

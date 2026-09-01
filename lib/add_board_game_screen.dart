@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class AddBoardGameScreen extends StatefulWidget {
   // Can optionally receive a board game document to edit
-  final DocumentSnapshot? boardGame;
+  final Map<String, dynamic>? boardGameData;
 
-  const AddBoardGameScreen({super.key, this.boardGame});
+  const AddBoardGameScreen({super.key, this.boardGameData});
 
   @override
   State<AddBoardGameScreen> createState() => _AddBoardGameScreenState();
@@ -14,7 +14,7 @@ class AddBoardGameScreen extends StatefulWidget {
 class _AddBoardGameScreenState extends State<AddBoardGameScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool get _isEditing => widget.boardGame != null;
+  bool get _isEditing => widget.boardGameData != null;
 
   final _nameController = TextEditingController();
   final _totalUnitsController = TextEditingController();
@@ -26,11 +26,11 @@ class _AddBoardGameScreenState extends State<AddBoardGameScreen> {
     super.initState();
     // If we are editing, pre-fill the form fields with the existing data
     if (_isEditing) {
-      final data = widget.boardGame!.data() as Map<String, dynamic>;
+      final data = widget.boardGameData!;
       _nameController.text = data['name'] ?? '';
-      _totalUnitsController.text = (data['totalUnits'] ?? 0).toString();
-      _availableUnitsController.text = (data['availableUnits'] ?? 0).toString();
-      _imageUrlController.text = data['imageUrl'] ?? '';
+      _totalUnitsController.text = (data['total_units'] ?? 0).toString();
+      _availableUnitsController.text = (data['available_units'] ?? 0).toString();
+      _imageUrlController.text = data['image_url'] ?? '';
     }
   }
 
@@ -50,18 +50,24 @@ class _AddBoardGameScreenState extends State<AddBoardGameScreen> {
     // Prepare the data map
     final gameData = {
       'name': _nameController.text.trim(),
-      'totalUnits': totalUnits,
-      'availableUnits': availableUnits,
-      'imageUrl': _imageUrlController.text.trim(),
+      'total_units': totalUnits,
+      'available_units': _isEditing ? availableUnits : totalUnits, // Default to total units on create
+      'image_url': _imageUrlController.text.trim(),
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
     };
 
     try {
       if (_isEditing) {
         // If editing, update the existing document
-        await widget.boardGame!.reference.update(gameData);
+        gameData.remove('created_at');
+        await MongoService.collection('board_games').updateOne(
+          {'_id': widget.boardGameData!['_id']},
+          {'\$set': gameData}
+        );
       } else {
         // If not editing, add a new document
-        await FirebaseFirestore.instance.collection('board_games').add(gameData);
+        await MongoService.collection('board_games').insertOne(gameData);
       }
 
       if (mounted) {

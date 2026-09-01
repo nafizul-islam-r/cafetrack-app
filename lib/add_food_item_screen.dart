@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class AddFoodItemScreen extends StatefulWidget {
-  final DocumentSnapshot? foodItem;
+  final Map<String, dynamic>? foodItem;
 
   const AddFoodItemScreen({super.key, this.foodItem});
 
@@ -24,11 +24,11 @@ class _AddFoodItemScreenState extends State<AddFoodItemScreen> {
   void initState() {
     super.initState();
     if (_isEditing) {
-      final data = widget.foodItem!.data() as Map<String, dynamic>;
+      final data = widget.foodItem!;
       _nameController.text = data['name'] ?? '';
       _priceController.text = (data['price'] ?? 0).toString();
-      _quantityController.text = (data['quantity'] ?? 0).toString();
-      _imageUrlController.text = data['imageUrl'] ?? ''; // Pre-fill image URL
+      _quantityController.text = (data['stock_quantity'] ?? 0).toString();
+      _imageUrlController.text = data['image_url'] ?? ''; // Pre-fill image URL
     }
   }
 
@@ -42,18 +42,43 @@ class _AddFoodItemScreenState extends State<AddFoodItemScreen> {
       _isLoading = true;
     });
 
-    final foodData = {
-      'name': _nameController.text.trim(),
-      'price': double.parse(_priceController.text.trim()),
-      'quantity': int.parse(_quantityController.text.trim()),
-      'imageUrl': _imageUrlController.text.trim(), // Save image URL
-    };
+    final price = double.parse(_priceController.text.trim());
+    final stock = int.parse(_quantityController.text.trim());
 
     try {
-      if (_isEditing) {
-        await widget.foodItem!.reference.update(foodData);
+      if (widget.foodItem == null) {
+        await MongoService.collection('food_items').insertOne({
+          'name': _nameController.text.trim(),
+          'price': price,
+          'stock_quantity': stock,
+          'image_url': _imageUrlController.text.trim(),
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item added successfully!')));
       } else {
-        await FirebaseFirestore.instance.collection('food_items').add(foodData);
+        final oldStock = widget.foodItem!['stock_quantity'] as int? ?? 0;
+        
+        await MongoService.collection('food_items').updateOne(
+          {'_id': widget.foodItem!['_id']},
+          {
+            '\$set': {
+              'name': _nameController.text.trim(),
+              'price': price,
+              'stock_quantity': stock,
+              'image_url': _imageUrlController.text.trim(),
+              'updated_at': DateTime.now().toIso8601String(),
+            }
+          },
+        );
+
+        if (oldStock == 0 && stock > 0) {
+          await MongoService.collection('wishlists').deleteMany({
+            'food_item_id': widget.foodItem!['_id'].toString(),
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item updated successfully!')));
       }
 
       if (mounted) {

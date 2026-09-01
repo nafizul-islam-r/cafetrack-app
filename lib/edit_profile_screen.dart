@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -42,16 +41,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() { _isLoading = true; });
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = MongoService.currentUser;
       if (user == null) throw Exception("User not found. Please log in again.");
 
-      // Update the user's document in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-        'name': _nameController.text.trim(),
-        'studentId': _studentIdController.text.trim(),
-        'intake': _intakeController.text.trim(),
-        'department': _selectedDepartment,
-      });
+      // Update the user's document in MongoDB
+      await MongoService.collection('users').updateOne(
+        {'_id': user['_id']},
+        {'\$set': {
+          'name': _nameController.text.trim(),
+          'studentId': _studentIdController.text.trim(),
+          'intake': _intakeController.text.trim(),
+          'department': _selectedDepartment,
+        }}
+      );
+
+      // Update the session data
+      user['name'] = _nameController.text.trim();
+      user['studentId'] = _studentIdController.text.trim();
+      user['intake'] = _intakeController.text.trim();
+      user['department'] = _selectedDepartment;
+      await MongoService.saveSession(user);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,13 +1,14 @@
-import 'package:cafetrack/add_board_game_screen.dart';
-import 'package:cafetrack/select_user_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cafetrack_flutter/add_board_game_screen.dart';
+import 'package:cafetrack_flutter/select_user_screen.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
+import 'package:mongo_dart/mongo_dart.dart' as mongo;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class BoardGameDetailsScreen extends StatelessWidget {
-  final DocumentSnapshot gameDoc;
+  final Map<String, dynamic> gameData;
 
-  const BoardGameDetailsScreen({super.key, required this.gameDoc});
+  const BoardGameDetailsScreen({super.key, required this.gameData});
 
   void _showDeleteConfirmation(BuildContext context) {
     showDialog(
@@ -25,7 +26,7 @@ class BoardGameDetailsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();
-              gameDoc.reference.delete();
+              MongoService.collection('board_games').deleteOne({'_id': gameData['_id']});
             },
           ),
         ],
@@ -33,72 +34,92 @@ class BoardGameDetailsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _assignGame(BuildContext context, DocumentSnapshot userDoc) async {
-    final gameRef = gameDoc.reference;
-    final userData = userDoc.data() as Map<String, dynamic>;
+  Future<void> _assignGame(BuildContext context, Map<String, dynamic> userData) async {
+    try {
+      final gameId = gameData['_id'];
+      
+      // Fetch fresh game data
+      final freshGame = await MongoService.collection('board_games').findOne({'_id': gameId});
+      if (freshGame == null) throw Exception('Game not found.');
 
-    FirebaseFirestore.instance.runTransaction((transaction) async {
-      final freshSnapshot = await transaction.get(gameRef);
-      final data = freshSnapshot.data() as Map<String, dynamic>;
-
-      if (data['availableUnits'] > 0) {
-        transaction.update(gameRef, {'availableUnits': data['availableUnits'] - 1});
-        final assignmentRef = gameRef.collection('assignments').doc();
-        transaction.set(assignmentRef, {
-          'userId': userDoc.id,
+      if (freshGame['available_units'] > 0) {
+        // Update game
+        await MongoService.collection('board_games').updateOne(
+          {'_id': gameId},
+          {'\$set': {'available_units': freshGame['available_units'] - 1}}
+        );
+        
+        // Insert assignment
+        await MongoService.collection('assignments').insertOne({
+          'board_game_id': gameId,
+          'user_id': userData['_id'],
           'userName': userData['name'],
           'userStudentId': userData['studentId'],
           'userDepartment': userData['department'],
           'userIntake': userData['intake'],
-          'assignedAt': Timestamp.now(),
+          'assigned_at': DateTime.now().toIso8601String(),
         });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Game assigned successfully!'), backgroundColor: Colors.green),
+          );
+        }
       } else {
         throw Exception('No games available to assign.');
       }
-    }).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Game assigned successfully!'), backgroundColor: Colors.green),
-      );
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to assign game: ${error.toString()}'), backgroundColor: Colors.red),
-      );
-    });
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to assign game: ${error.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
-  Future<void> _returnGame(BuildContext context, DocumentSnapshot assignmentDoc) async {
-    final gameRef = gameDoc.reference;
+  Future<void> _returnGame(BuildContext context, Map<String, dynamic> assignmentData) async {
+    try {
+      final gameId = gameData['_id'];
 
-    FirebaseFirestore.instance.runTransaction((transaction) async {
-      final freshSnapshot = await transaction.get(gameRef);
-      final data = freshSnapshot.data() as Map<String, dynamic>;
-      transaction.update(gameRef, {'availableUnits': data['availableUnits'] + 1});
-      transaction.delete(assignmentDoc.reference);
-    }).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Game returned successfully!'), backgroundColor: Colors.green),
-      );
-    }).catchError((error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to return game: ${error.toString()}'), backgroundColor: Colors.red),
-      );
-    });
+      // Fetch fresh game data
+      final freshGame = await MongoService.collection('board_games').findOne({'_id': gameId});
+      if (freshGame != null) {
+        await MongoService.collection('board_games').updateOne(
+          {'_id': gameId},
+          {'\$set': {'available_units': freshGame['available_units'] + 1}}
+        );
+      }
+      
+      await MongoService.collection('assignments').deleteOne({'_id': assignmentData['_id']});
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Game returned successfully!'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to return game: ${error.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: gameDoc.reference.snapshots(),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: MongoService.collection('board_games').findOne({'_id': gameData['_id']}),
       builder: (ctx, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        final gameData = snapshot.data!.data() as Map<String, dynamic>;
-        final gameName = gameData['name'] ?? 'No Name';
-        final totalUnits = gameData['totalUnits'] ?? 0;
-        final availableUnits = gameData['availableUnits'] ?? 0;
-        final imageUrl = gameData['imageUrl'] ?? 'https://placehold.co/600x400?text=No+Image';
+        final freshGameData = snapshot.data!;
+        final gameName = freshGameData['name'] ?? 'No Name';
+        final totalUnits = freshGameData['total_units'] ?? 0;
+        final availableUnits = freshGameData['available_units'] ?? 0;
+        final imageUrl = freshGameData['image_url'] ?? 'https://placehold.co/600x400?text=No+Image';
 
         return Scaffold(
           appBar: AppBar(
@@ -106,7 +127,7 @@ class BoardGameDetailsScreen extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => AddBoardGameScreen(boardGame: gameDoc))),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => AddBoardGameScreen(boardGameData: freshGameData))),
                 tooltip: 'Edit Game',
               ),
               IconButton(
@@ -143,7 +164,7 @@ class BoardGameDetailsScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: availableUnits > 0 ? () async {
-                          final selectedUser = await Navigator.of(context).push<DocumentSnapshot>(
+                          final selectedUser = await Navigator.of(context).push<Map<String, dynamic>>(
                             MaterialPageRoute(builder: (ctx) => const SelectUserScreen()),
                           );
 
@@ -158,29 +179,30 @@ class BoardGameDetailsScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                       Text('Current Assignments', style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 8),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: gameDoc.reference.collection('assignments').orderBy('assignedAt', descending: true).snapshots(),
+                      FutureBuilder<List<Map<String, dynamic>>>(
+                        future: MongoService.collection('assignments').find(mongo.where.eq('board_game_id', gameData['_id']).sortBy('assigned_at', descending: true)).toList(),
                         builder: (ctx, assignmentSnapshot) {
                           if (assignmentSnapshot.connectionState == ConnectionState.waiting) {
                             return const Center(child: CircularProgressIndicator());
                           }
-                          if (!assignmentSnapshot.hasData || assignmentSnapshot.data!.docs.isEmpty) {
+                          if (!assignmentSnapshot.hasData || assignmentSnapshot.data!.isEmpty) {
                             return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('No games currently assigned.')));
                           }
 
-                          final assignments = assignmentSnapshot.data!.docs;
+                          final assignments = assignmentSnapshot.data!;
 
                           return ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: assignments.length,
                             itemBuilder: (ctx, index) {
-                              final assignmentData = assignments[index].data() as Map<String, dynamic>;
+                              final assignmentData = assignments[index];
                               final userName = assignmentData['userName'] ?? 'Unknown User';
                               final userStudentId = assignmentData['userStudentId'] ?? 'No ID';
                               final userDepartment = assignmentData['userDepartment'] ?? 'N/A';
                               final userIntake = assignmentData['userIntake'] ?? '';
-                              final assignedAt = (assignmentData['assignedAt'] as Timestamp?)?.toDate();
+                              final assignedAtStr = assignmentData['assigned_at'];
+                              final assignedAt = assignedAtStr != null ? DateTime.tryParse(assignedAtStr) : null;
                               final formattedDate = assignedAt != null ? DateFormat.yMMMd().add_jm().format(assignedAt) : 'No date';
 
                               return Card(

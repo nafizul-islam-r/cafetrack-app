@@ -1,7 +1,7 @@
-import 'package:cafetrack/home_screen.dart'; // Import HomeScreen
+import 'package:cafetrack_flutter/home_screen.dart'; // Import HomeScreen
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dbcrypt/dbcrypt.dart';
+import 'services/mongo_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,32 +43,51 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() { _isLoading = true; });
 
     try {
-      final auth = FirebaseAuth.instance;
-      UserCredential userCredential;
+      final usersCollection = MongoService.collection('users');
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
 
       if (_isLogin) {
-        userCredential = await auth.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-      } else { // Signup mode
-        userCredential = await auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
+        // Query user by email
+        final userDoc = await usersCollection.findOne({'email': email});
+        if (userDoc == null) {
+          throw Exception('No user found with this email.');
+        }
 
-        // Save user data to Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .set({
+        final isPasswordCorrect = DBCrypt().checkpw(password, userDoc['password'] ?? '');
+        if (!isPasswordCorrect) {
+          throw Exception('Incorrect password.');
+        }
+
+        // Save session
+        await MongoService.saveSession(userDoc);
+      } else { // Signup mode
+        // Check if user already exists
+        final existingUser = await usersCollection.findOne({'email': email});
+        if (existingUser != null) {
+          throw Exception('Email already in use.');
+        }
+
+        final hashedPassword = DBCrypt().hashpw(password, DBCrypt().gensalt());
+
+        final newUser = {
           'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
+          'email': email,
+          'password': hashedPassword,
           'department': _selectedDepartment,
           'intake': _intakeController.text.trim(),
           'studentId': _studentIdController.text.trim(),
           'role': 'user', // Default role
-        });
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        await usersCollection.insertOne(newUser);
+        
+        final createdUser = await usersCollection.findOne({'email': email});
+        if (createdUser != null) {
+          await MongoService.saveSession(createdUser);
+        }
       }
 
       // Navigate after successful login/signup
@@ -77,11 +96,11 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (ctx) => const HomeScreen()),
         );
       }
-    } on FirebaseAuthException catch (error) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error.message ?? 'Authentication failed.'),
+            content: Text(error.toString().replaceAll('Exception: ', '')),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

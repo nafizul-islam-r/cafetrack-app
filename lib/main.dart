@@ -1,15 +1,11 @@
-import 'package:cafetrack/home_screen.dart';
+import 'package:cafetrack_flutter/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'firebase_options.dart';
-import 'package:cafetrack/login_screen.dart';
-// this is main .dart
+import 'package:cafetrack_flutter/login_screen.dart';
+import 'services/mongo_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await MongoService.connect();
   runApp(const MyApp());
 }
 
@@ -35,19 +31,9 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (ctx, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasData) {
-          // If logged in, show the new HomeScreen
-          return const HomeScreen();
-        }
-        return const LoginScreen();
-      },
-    );
+    if (MongoService.currentUser != null) {
+      return const HomeScreen();
+    }
+    return const LoginScreen();
   }
 }
-

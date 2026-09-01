@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class SelectUserScreen extends StatefulWidget {
   const SelectUserScreen({super.key});
@@ -50,21 +50,20 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('users').snapshots(),
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: MongoService.collection('users').find().toList(),
               builder: (ctx, userSnapshot) {
                 if (userSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!userSnapshot.hasData || userSnapshot.data!.docs.isEmpty) {
+                if (!userSnapshot.hasData || userSnapshot.data!.isEmpty) {
                   return const Center(child: Text('No users found.'));
                 }
 
-                final allUsers = userSnapshot.data!.docs;
+                final allUsers = userSnapshot.data!;
                 final filteredUsers = _searchQuery.isEmpty
                     ? allUsers
-                    : allUsers.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
+                    : allUsers.where((data) {
                   final name = (data['name'] as String?)?.toLowerCase() ?? '';
                   final studentId = (data['studentId'] as String?)?.toLowerCase() ?? '';
                   return name.contains(_searchQuery) || studentId.contains(_searchQuery);
@@ -77,8 +76,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                 return ListView.builder(
                   itemCount: filteredUsers.length,
                   itemBuilder: (ctx, index) {
-                    final userDoc = filteredUsers[index];
-                    final userData = userDoc.data() as Map<String, dynamic>;
+                    final userData = filteredUsers[index];
                     final name = userData['name'] ?? 'No Name';
                     final studentId = userData['studentId'] ?? 'No ID';
                     final department = userData['department'] ?? 'No Dept';
@@ -87,7 +85,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       title: Text(name),
                       subtitle: Text('ID: $studentId | Dept: $department'),
                       onTap: () {
-                        Navigator.of(context).pop(userDoc);
+                        Navigator.of(context).pop(userData);
                       },
                     );
                   },

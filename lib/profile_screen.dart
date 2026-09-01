@@ -1,7 +1,6 @@
-import 'package:cafetrack/edit_profile_screen.dart';
+import 'package:cafetrack_flutter/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cafetrack_flutter/services/mongo_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,17 +24,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     setState(() { _isLoading = true; });
 
-    final user = FirebaseAuth.instance.currentUser;
+    final user = MongoService.currentUser;
     if (user == null) {
       if (mounted) setState(() { _isLoading = false; });
       return;
     }
 
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (mounted && userDoc.exists) {
+      final userDoc = await MongoService.collection('users').findOne({'_id': user['_id']});
+      if (mounted && userDoc != null) {
         setState(() {
-          _userData = userDoc.data();
+          _userData = userDoc;
           _isLoading = false;
         });
       }
