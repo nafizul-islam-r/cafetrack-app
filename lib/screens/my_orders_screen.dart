@@ -149,6 +149,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       orderStatus.toString().toUpperCase(),
                       style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
+                  ),
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
